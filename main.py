@@ -33,24 +33,36 @@ def main(data_file):
         for key, value in result.items():
             agg_results[key].append(value)
 
-    print(agg_results)
     # Print average results
     for key, values in agg_results.items():
         if key == "classification_report":
             # Average each metric in the classification report
             avg_report = {}
             for label in values[0].keys():
-                avg_report[label] = {}
-                for metric in values[0][label].keys():
-                    metric_values = [v[label][metric] for v in values]
-                    avg_report[label][metric] = np.average(metric_values)
-            print(f"Average {key}:\n{avg_report}\n")
+                if isinstance(values[0][label], dict):
+                    avg_report[label] = {}
+                    for metric in values[0][label].keys():
+                        metric_values = [v[label][metric] for v in values]
+                        avg_report[label][metric] = np.average(metric_values)
+                else:
+                    metric_values = [v[label] for v in values]
+                    avg_report[label] = np.average(metric_values)
+
+            # Print the averaged classification report
+            for label, metrics in avg_report.items():
+                if isinstance(metrics, dict):
+                    print(f" {label}:")
+                    for metric, value in metrics.items():
+                        print(f"   {metric}: {value:.4f}")
+                else:
+                    print(f" {label}: {metrics:.4f}")
+                print()
         else:
-            avg_value = np.average(values)
+            avg_value = np.average(values, axis=0)
             print(f"Average {key}:\n{avg_value}\n")
 
 
 if __name__ == "__main__":
     main("training_data_ht2025.csv")
     # data = process_data("training_data_ht2025.csv")
-    # print(data.head())
+    # print(data.info())
