@@ -5,11 +5,12 @@ from data_processing_default import process_data_default
 from data_processing_reduced import process_data_reduced
 from data_processing_logistic_regression import process_data_logistic_regression
 from logistic_regression import logistic_regression
-from eval import evaluate_model
+from naive_method import naive_method
+from eval import verbose_evaluate_model, eval_avg_f1
 
 process_data = process_data_logistic_regression
-model_train_evaluate = logistic_regression
-eval_func = evaluate_model
+model_train_evaluate = naive_method
+eval_func = eval_avg_f1
 
 
 def main(data_file):
