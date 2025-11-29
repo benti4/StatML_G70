@@ -12,7 +12,10 @@ import pandas as pd
 import numpy as np
 from typing import Callable, Dict, Any, Optional
 
-from utils.hyperparameter_search import grid_search, random_search, filter_conditional_params
+from utils.hyperparameter_search import (
+    grid_search, random_search, filter_conditional_params,
+    parallel_hyperparameter_search
+)
 from utils.cross_validation import k_fold_cross_validation
 
 
@@ -26,6 +29,7 @@ def nested_cross_validation(
     search_strategy: str = 'grid',
     random_search_iterations: int = 20,
     random_seed: Optional[int] = None,
+    n_jobs: int = 1,
     verbose: bool = True
 ) -> Dict[str, Any]:
     """
@@ -41,6 +45,7 @@ def nested_cross_validation(
     - search_strategy: 'grid' or 'random' search for hyperparameters
     - random_search_iterations: Number of iterations if using random search
     - random_seed: Random seed for reproducibility
+    - n_jobs: Number of parallel workers for hyperparameter search (-1 = all cores, 1 = sequential)
     - verbose: Whether to print progress
 
     Returns:
@@ -56,6 +61,7 @@ def nested_cross_validation(
         print(f"NESTED CROSS-VALIDATION")
         print(f"Outer folds: {outer_k}, Inner folds: {inner_k}")
         print(f"Search strategy: {search_strategy}")
+        print(f"Parallel workers: {n_jobs if n_jobs > 0 else 'all cores'}")
         print(f"{'='*80}\n")
 
     fold_size = len(data) // outer_k
@@ -99,15 +105,10 @@ def nested_cross_validation(
         if verbose:
             print(f"Testing {len(param_combinations)} hyperparameter combinations in inner loop...")
 
-        # Evaluate each hyperparameter combination on inner folds
-        best_inner_score = -np.inf
-        best_inner_params = None
-
-        for idx, hyperparameters in enumerate(param_combinations):
-            # Filter conditional parameters
-            hyperparameters = filter_conditional_params(hyperparameters, search_space)
-
-            # Use inner k-fold CV on outer_train_data only
+        # Evaluate each hyperparameter combination on inner folds using parallel processing
+        if len(param_combinations) == 1:
+            # Single combination, no need for parallelization
+            hyperparameters = filter_conditional_params(param_combinations[0], search_space)
             inner_cv_results = k_fold_cross_validation(
                 data=outer_train_data,
                 model_train_evaluate=model_train_evaluate,
@@ -116,17 +117,29 @@ def nested_cross_validation(
                 k=inner_k,
                 verbose=False
             )
-
-            # Get the score (assuming eval_func returns average_f1_score)
             inner_score = inner_cv_results.get('average_f1_score', {}).get('mean', -np.inf)
+            best_inner_score = inner_score
+            best_inner_params = hyperparameters
+        else:
+            # Use parallel execution for multiple combinations
+            inner_results = parallel_hyperparameter_search(
+                param_combinations=param_combinations,
+                data=outer_train_data,
+                model_train_evaluate=model_train_evaluate,
+                eval_func=eval_func,
+                search_space=search_space,
+                k_folds=inner_k,
+                n_jobs=n_jobs,
+                verbose=verbose
+            )
 
-            if verbose and (idx + 1) % max(1, len(param_combinations) // 10) == 0:
-                print(f"  [{idx + 1}/{len(param_combinations)}] Evaluated hyperparameters...")
-
-            # Track best hyperparameters
-            if inner_score > best_inner_score:
-                best_inner_score = inner_score
-                best_inner_params = hyperparameters.copy()
+            # Find best hyperparameters from inner loop
+            best_inner_score = -np.inf
+            best_inner_params = None
+            for result in inner_results:
+                if result['score'] > best_inner_score:
+                    best_inner_score = result['score']
+                    best_inner_params = result['hyperparameters']
 
         if verbose:
             print(f"\nBest hyperparameters for outer fold {outer_fold + 1}: {best_inner_params}")
@@ -194,6 +207,7 @@ def evaluate_method_with_nested_cv(
     search_strategy: str = 'grid',
     random_search_iterations: int = 20,
     random_seed: Optional[int] = None,
+    n_jobs: int = 1,
     verbose: bool = True
 ) -> Dict[str, Any]:
     """
@@ -212,6 +226,7 @@ def evaluate_method_with_nested_cv(
     - search_strategy: 'grid' or 'random' search
     - random_search_iterations: Number of iterations if using random search
     - random_seed: Random seed for reproducibility
+    - n_jobs: Number of parallel workers for hyperparameter search (-1 = all cores, 1 = sequential)
     - verbose: Whether to print progress
 
     Returns:
@@ -235,6 +250,7 @@ def evaluate_method_with_nested_cv(
         search_strategy=search_strategy,
         random_search_iterations=random_search_iterations,
         random_seed=random_seed,
+        n_jobs=n_jobs,
         verbose=verbose
     )
 

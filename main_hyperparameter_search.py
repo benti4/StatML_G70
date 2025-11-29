@@ -16,7 +16,10 @@ from model_functionality.logistic_regression import logistic_regression
 from eval import eval_avg_f1
 
 from config.hyperparameter_config import SEARCH_SPACES
-from utils.hyperparameter_search import grid_search, random_search, manual_search, filter_conditional_params
+from utils.hyperparameter_search import (
+    grid_search, random_search, manual_search,
+    filter_conditional_params, parallel_hyperparameter_search
+)
 from utils.cross_validation import k_fold_cross_validation, print_cv_results
 
 
@@ -36,6 +39,10 @@ SEARCH_STRATEGY = 'random'
 # Cross-validation settings
 K_FOLDS = 10
 print_shit = True
+
+# Parallel execution settings
+# n_jobs: Number of parallel workers (-1 = all cores, 1 = sequential, N = N workers)
+N_JOBS = -1
 
 # Random search settings (only used if SEARCH_STRATEGY == 'random')
 RANDOM_SEARCH_ITERATIONS = 100
@@ -99,44 +106,54 @@ def run_hyperparameter_search(data_file: str):
     best_score = -np.inf
     best_params = None
     best_results = None
-    all_search_results = []
 
-    # Evaluate each combination
-    for idx, hyperparameters in enumerate(param_combinations):
-        # Filter conditional parameters
-        hyperparameters = filter_conditional_params(hyperparameters, search_space)
+    # Evaluate all combinations (in parallel if N_JOBS != 1)
+    if SEARCH_STRATEGY == 'single' or len(param_combinations) == 1:
+        # For single configuration, no need for parallelization
+        all_search_results = []
+        for idx, hyperparameters in enumerate(param_combinations):
+            hyperparameters = filter_conditional_params(hyperparameters, search_space)
+            print(f"\nTesting: {hyperparameters}")
 
-        print(f"\n[{idx + 1}/{len(param_combinations)}] Testing: {hyperparameters}")
+            cv_results = k_fold_cross_validation(
+                data=data,
+                model_train_evaluate=model_train_evaluate,
+                hyperparameters=hyperparameters,
+                eval_func=eval_func,
+                k=K_FOLDS,
+                verbose=False
+            )
 
-        # Run K-fold cross-validation
-        cv_results = k_fold_cross_validation(
+            score = cv_results.get('average_f1_score', {}).get('mean', -np.inf)
+            score_std = cv_results.get('average_f1_score', {}).get('std', 0)
+            print(f"   → Average F1 Score: {score:.4f} ± {score_std:.4f}")
+
+            all_search_results.append({
+                'hyperparameters': hyperparameters.copy(),
+                'score': score,
+                'score_std': score_std,
+                'cv_results': cv_results
+            })
+    else:
+        # Use parallel execution for multiple combinations
+        print(f"\nEvaluating {len(param_combinations)} combinations with {N_JOBS if N_JOBS > 0 else 'all'} workers...")
+        all_search_results = parallel_hyperparameter_search(
+            param_combinations=param_combinations,
             data=data,
             model_train_evaluate=model_train_evaluate,
-            hyperparameters=hyperparameters,
             eval_func=eval_func,
-            k=K_FOLDS,
-            verbose=False
+            search_space=search_space,
+            k_folds=K_FOLDS,
+            n_jobs=N_JOBS,
+            verbose=True
         )
 
-        # Get the score (assuming eval_func returns average_f1_score)
-        score = cv_results.get('average_f1_score', {}).get('mean', -np.inf)
-        score_std = cv_results.get('average_f1_score', {}).get('std', 0)
-
-        print(f"   → Average F1 Score: {score:.4f} ± {score_std:.4f}")
-
-        # Store results
-        all_search_results.append({
-            'hyperparameters': hyperparameters.copy(),
-            'score': score,
-            'score_std': score_std,
-            'cv_results': cv_results
-        })
-
-        # Update best results
-        if score > best_score:
-            best_score = score
-            best_params = hyperparameters.copy()
-            best_results = cv_results
+    # Find best results
+    for result in all_search_results:
+        if result['score'] > best_score:
+            best_score = result['score']
+            best_params = result['hyperparameters']
+            best_results = result['cv_results']
 
     # Print final results
     print(f"\n{'='*80}")

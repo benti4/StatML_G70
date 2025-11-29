@@ -45,6 +45,10 @@ SEARCH_STRATEGY = 'random'
 RANDOM_SEARCH_ITERATIONS = 50
 RANDOM_SEED = 42
 
+# Parallel execution settings
+# n_jobs: Number of parallel workers (-1 = all cores, 1 = sequential, N = N workers)
+N_JOBS = -1
+
 # Verbosity
 VERBOSE = True
 
@@ -66,6 +70,7 @@ def main():
     if SEARCH_STRATEGY == 'random':
         print(f"  - Random search iterations: {RANDOM_SEARCH_ITERATIONS}")
     print(f"  - Random seed: {RANDOM_SEED}")
+    print(f"  - Parallel workers: {N_JOBS if N_JOBS > 0 else 'all cores'}")
     print(f"{'='*80}\n")
 
     # Run nested cross-validation
@@ -80,6 +85,7 @@ def main():
         search_strategy=SEARCH_STRATEGY,
         random_search_iterations=RANDOM_SEARCH_ITERATIONS,
         random_seed=RANDOM_SEED,
+        n_jobs=N_JOBS,
         verbose=VERBOSE
     )
 

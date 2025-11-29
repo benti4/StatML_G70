@@ -5,11 +5,14 @@ Supports:
 - Grid Search: exhaustive search over all combinations
 - Random Search: random sampling from parameter distributions
 - Manual Search: specify your own list of parameter combinations
+- Parallel Search: parallel evaluation of hyperparameter combinations
 """
 
 import itertools
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable, Any
+from joblib import Parallel, delayed
+import pandas as pd
 
 
 def grid_search(search_space: Dict, max_combinations: Optional[int] = None) -> List[Dict]:
@@ -165,3 +168,119 @@ def manual_search(param_combinations: List[Dict]) -> List[Dict]:
     - The same list (for consistency with other search functions)
     """
     return param_combinations
+
+
+def evaluate_single_hyperparameter(
+    hyperparameters: Dict,
+    data: pd.DataFrame,
+    model_train_evaluate: Callable,
+    eval_func: Callable,
+    search_space: Dict,
+    k_folds: int = 10,
+    idx: int = 0,
+    total: int = 1,
+    verbose: bool = False
+) -> Dict[str, Any]:
+    """
+    Evaluate a single hyperparameter combination using k-fold cross-validation.
+    This is a helper function designed to be run in parallel.
+
+    Parameters:
+    - hyperparameters: Dictionary of hyperparameters to evaluate
+    - data: The dataset
+    - model_train_evaluate: Function to train and evaluate model
+    - eval_func: Evaluation function
+    - search_space: Dictionary defining the search space
+    - k_folds: Number of folds for cross-validation
+    - idx: Index of this combination (for progress tracking)
+    - total: Total number of combinations (for progress tracking)
+    - verbose: Whether to print progress
+
+    Returns:
+    - Dictionary with hyperparameters, score, score_std, and cv_results
+    """
+    from utils.cross_validation import k_fold_cross_validation
+
+    # Filter conditional parameters
+    hyperparameters = filter_conditional_params(hyperparameters, search_space)
+
+    if verbose:
+        print(f"[{idx + 1}/{total}] Evaluating: {hyperparameters}")
+
+    # Run K-fold cross-validation
+    cv_results = k_fold_cross_validation(
+        data=data,
+        model_train_evaluate=model_train_evaluate,
+        hyperparameters=hyperparameters,
+        eval_func=eval_func,
+        k=k_folds,
+        verbose=False
+    )
+
+    # Get the score (assuming eval_func returns average_f1_score)
+    score = cv_results.get('average_f1_score', {}).get('mean', -np.inf)
+    score_std = cv_results.get('average_f1_score', {}).get('std', 0)
+
+    if verbose:
+        print(f"[{idx + 1}/{total}] Score: {score:.4f} ± {score_std:.4f}")
+
+    return {
+        'hyperparameters': hyperparameters.copy(),
+        'score': score,
+        'score_std': score_std,
+        'cv_results': cv_results
+    }
+
+
+def parallel_hyperparameter_search(
+    param_combinations: List[Dict],
+    data: pd.DataFrame,
+    model_train_evaluate: Callable,
+    eval_func: Callable,
+    search_space: Dict,
+    k_folds: int = 10,
+    n_jobs: int = -1,
+    verbose: bool = True
+) -> List[Dict[str, Any]]:
+    """
+    Evaluate multiple hyperparameter combinations in parallel.
+
+    Parameters:
+    - param_combinations: List of hyperparameter dictionaries to evaluate
+    - data: The dataset
+    - model_train_evaluate: Function to train and evaluate model
+    - eval_func: Evaluation function
+    - search_space: Dictionary defining the search space
+    - k_folds: Number of folds for cross-validation
+    - n_jobs: Number of parallel jobs to run (-1 uses all available cores, 1 disables parallelization)
+    - verbose: Whether to print progress
+
+    Returns:
+    - List of result dictionaries, each containing hyperparameters, score, score_std, and cv_results
+    """
+    if verbose:
+        if n_jobs == -1:
+            print(f"Running parallel hyperparameter search with all available cores...")
+        elif n_jobs == 1:
+            print(f"Running sequential hyperparameter search...")
+        else:
+            print(f"Running parallel hyperparameter search with {n_jobs} workers...")
+
+    # Use joblib's Parallel to evaluate combinations in parallel
+    results = Parallel(n_jobs=n_jobs, verbose=10 if verbose else 0)(
+        delayed(evaluate_single_hyperparameter)(
+            hyperparameters=params,
+            data=data,
+            model_train_evaluate=model_train_evaluate,
+            eval_func=eval_func,
+            search_space=search_space,
+            k_folds=k_folds,
+            idx=idx,
+            total=len(param_combinations),
+            verbose=False  # Disable verbose in worker to avoid cluttered output
+        )
+        for idx, params in enumerate(param_combinations)
+    )
+
+    return results
+

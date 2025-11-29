@@ -196,6 +196,46 @@ StatML_G70/
 └── main.py                            # Original simple script
 ```
 
+## ⚡ Parallel Execution
+
+**NEW**: Hyperparameter search now supports parallel execution for significant speedups!
+
+### Configuration
+
+Set the `N_JOBS` variable in `main_hyperparameter_search.py`:
+
+```python
+# Parallel execution settings
+N_JOBS = -1  # Use all CPU cores (fastest)
+# N_JOBS = 1   # Sequential (no parallelization, for debugging)
+# N_JOBS = 4   # Use 4 cores (memory-conscious)
+```
+
+### Performance
+
+- **Typical speedup**: 4-8x faster on multi-core processors
+- **Best for**: Large search spaces (>10 combinations)
+- **Memory**: Each worker loads data, so reduce `N_JOBS` if memory-constrained
+
+### Example Usage
+
+```python
+# Fast random search with all cores
+SEARCH_STRATEGY = 'random'
+RANDOM_SEARCH_ITERATIONS = 100
+N_JOBS = -1  # Will evaluate 100 combinations in parallel
+```
+
+### Demo Script
+
+Run the demo to compare sequential vs parallel execution:
+
+```bash
+python example_parallel_execution.py
+```
+
+For detailed information, see `PARALLEL_EXECUTION_README.md`.
+
 ## 💡 Tips
 
 1. **Start with random search** - It's usually more efficient than grid search
@@ -203,6 +243,7 @@ StatML_G70/
 3. **Narrow down the range** - After initial search, focus on promising regions
 4. **Use conditional parameters** - Save computation by only testing relevant combinations
 5. **Check the output** - The script shows top 5 configurations for comparison
+6. **Use parallel execution** - Set `N_JOBS = -1` for significant speedups on large search spaces
 
 ## 🎯 Example Output
 
