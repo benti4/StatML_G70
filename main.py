@@ -1,16 +1,18 @@
 import pandas as pd
 import numpy as np
 
-from data_processing_default import process_data_default
-from data_processing_reduced import process_data_reduced
-from data_processing_logistic_regression import process_data_logistic_regression
-from logistic_regression import logistic_regression
-from naive_method import naive_method
-from eval import verbose_evaluate_model, eval_avg_f1
+from data_preprocessing_functionality.data_processing_logistic_regression import process_data_logistic_regression
+from model_functionality.naive_method import naive_method
+from model_functionality.logistic_regression import logistic_regression
+from eval import eval_avg_f1
 
 process_data = process_data_logistic_regression
-model_train_evaluate = naive_method
+model_train_evaluate = logistic_regression
 eval_func = eval_avg_f1
+
+# You can now easily change hyperparameters here
+# Or use the hyperparameter search in main_hyperparameter_search.py
+hyperparameters = {'regularization_method': 'elastic', 'C': 100, 'l1_ratio': 1.0}
 
 
 def main(data_file):
@@ -28,7 +30,7 @@ def main(data_file):
         test_data = data.iloc[start:end]
         train_data = pd.concat([data.iloc[:start], data.iloc[end:]])
 
-        results = model_train_evaluate(train_data, test_data, eval_func)
+        results = model_train_evaluate(train_data, test_data, hyperparameters, eval_func)
         all_results.append(results)
 
     # Aggregate results
