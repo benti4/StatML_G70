@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 
-from data_processing_default import process_data
+from data_processing_default import process_data_default
+from data_processing_reduced import process_data_reduced
+from data_processing_logistic_regression import process_data_logistic_regression
 from logistic_regression import logistic_regression
 from eval import evaluate_model
 
-process_data = process_data
+process_data = process_data_logistic_regression
 model_train_evaluate = logistic_regression
 
 
@@ -14,7 +16,7 @@ def main(data_file):
     data = process_data(data_file)
 
     # Do K-Fold Cross Validation and evaluate the model
-    k = 5
+    k = 10
     fold_size = len(data) // k
     all_results = []
     for fold in range(k):

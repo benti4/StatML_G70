@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 
-def process_data(file_path):
+def process_data_default(file_path):
     # Load dataset
     data = pd.read_csv(file_path)
 
