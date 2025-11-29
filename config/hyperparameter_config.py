@@ -55,6 +55,43 @@ SEARCH_SPACES = {
         }
     },
 
+    'classification_tree': {
+        'criterion': {
+            'type': 'categorical',
+            'range': ['gini', 'entropy'],
+            'values': ['gini', 'entropy']
+        },
+        'max_depth': {
+            'type': 'discrete',
+            'range': [3, 30],
+            'values': [5, 10, 15, 20, None] 
+        },
+        'min_samples_split': {
+            'type': 'discrete',
+            'range': [2, 100],
+            'values': [2, 5, 10, 20, 50]
+        },
+        'min_samples_leaf': {
+            'type': 'discrete',
+            'range': [1, 50],
+            'values': [1, 3, 5, 10, 20]
+        },
+        'max_features': {
+            'type': 'categorical',
+            'range': ['auto', 'sqrt', 'log2', None],
+            'values': ['sqrt', 'log2', None] 
+        },
+        'bagging': {
+            'type': 'categorical',
+            'values': [True, False]
+        },
+        'n_estimators': {
+            'type': 'discrete',
+            'range': [10, 500],
+            'values': [50, 100, 200] 
+        }
+    },
+
     'svm': {
         'C': {
             'type': 'continuous',
