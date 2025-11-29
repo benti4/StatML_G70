@@ -1,16 +1,13 @@
 import pandas as pd
 import numpy as np
 
-from data_processing_default import process_data_default
-from data_processing_reduced import process_data_reduced
-from data_processing_logistic_regression import process_data_logistic_regression
-from logistic_regression import logistic_regression
-from naive_method import naive_method
-from eval import verbose_evaluate_model, eval_avg_f1
+from data_preprocessing_functionality.data_processing_logistic_regression import process_data_logistic_regression
+from model_functionality.naive_method import naive_method
+from eval import verbose_evaluate_model
 
 process_data = process_data_logistic_regression
 model_train_evaluate = naive_method
-eval_func = eval_avg_f1
+eval_func = verbose_evaluate_model
 
 
 def main(data_file):
