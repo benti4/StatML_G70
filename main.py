@@ -9,6 +9,7 @@ from eval import evaluate_model
 
 process_data = process_data_logistic_regression
 model_train_evaluate = logistic_regression
+eval_func = evaluate_model
 
 
 def main(data_file):
@@ -26,7 +27,7 @@ def main(data_file):
         test_data = data.iloc[start:end]
         train_data = pd.concat([data.iloc[:start], data.iloc[end:]])
 
-        results = model_train_evaluate(train_data, test_data, evaluate_model)
+        results = model_train_evaluate(train_data, test_data, eval_func)
         all_results.append(results)
 
     # Aggregate results
