@@ -1,4 +1,3 @@
-# main_hyperparameter_search.py
 """
 Main script with hyperparameter search functionality.
 
@@ -22,7 +21,7 @@ from utils.cross_validation import k_fold_cross_validation, print_cv_results
 
 
 # ============================================================================
-# CONFIGURATION - Change these to adapt to your needs
+# CONFIGURATION
 # ============================================================================
 
 # Model configuration
@@ -36,7 +35,7 @@ SEARCH_STRATEGY = 'random'
 
 # Cross-validation settings
 K_FOLDS = 10
-VERBOSE = True
+print_shit = True
 
 # Random search settings (only used if SEARCH_STRATEGY == 'random')
 RANDOM_SEARCH_ITERATIONS = 100
@@ -158,7 +157,7 @@ def run_hyperparameter_search(data_file: str):
     print(f"\nBest Hyperparameters: {best_params}")
     print(f"Best F1 Score: {best_score:.4f}")
 
-    if VERBOSE and best_results:
+    if print_shit and best_results:
         print_cv_results(best_results, best_params)
 
     return {
