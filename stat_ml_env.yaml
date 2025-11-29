@@ -11,8 +11,8 @@ dependencies:
   - scikit-learn
   - jupyterlab
   - notebook
-  - pyspark
-  - openjdk
+  - pyspark=3.5.1
+  - openjdk=11
   - polars
   - seaborn
   - openpyxl
